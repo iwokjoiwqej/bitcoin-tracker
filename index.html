@@ -1,107 +1,112 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Bitcoin Tracker with Chart</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Crypto Staking Calculator</title>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <style>
     body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 40px;
-    }
-    #price {
-      font-size: 2rem;
-      margin-bottom: 20px;
-      transition: color 0.3s;
-    }
-    #btcChart {
+      font-family: Arial, sans-serif;
       max-width: 600px;
-      margin: 0 auto;
+      margin: 40px auto;
+      padding: 20px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background-color: #f9f9f9;
+    }
+    h1 {
+      text-align: center;
+    }
+    label, select, input {
+      display: block;
+      width: 100%;
+      margin-top: 15px;
+      font-size: 1rem;
+    }
+    .result {
+      margin-top: 25px;
+      padding: 15px;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .result p {
+      margin: 5px 0;
     }
   </style>
 </head>
 <body>
-  <h1>🚀 내 비트코인 트래커</h1>
-  <p>현재 비트코인 가격 (USD):</p>
-  <div id="price">불러오는 중...</div>
-  <canvas id="btcChart" width="600" height="300"></canvas>
+  <h1>🪙 스테이킹 계산기</h1>
+
+  <label for="coin">코인 선택:</label>
+  <select id="coin">
+    <option value="bitcoin">BTC</option>
+    <option value="ethereum">ETH</option>
+    <option value="ripple">XRP</option>
+    <option value="solana">SOL</option>
+  </select>
+
+  <label for="amount">스테이킹 수량:</label>
+  <input type="number" id="amount" placeholder="예: 1" min="0" step="any">
+
+  <label for="apr">APR (%):</label>
+  <input type="number" id="apr" placeholder="예: 5" min="0" step="any">
+
+  <label for="days">기간 (일):</label>
+  <input type="number" id="days" placeholder="예: 30" min="1">
+
+  <div class="result" id="result">
+    <p>보상 코인: -</p>
+    <p>USD 기준: -</p>
+    <p>KRW 기준: -</p>
+  </div>
 
   <script>
-    let previousPrice = null;
-    let chart = null;
-    let labels = [];
-    let dataPoints = [];
+    const coinSelect = document.getElementById('coin');
+    const amountInput = document.getElementById('amount');
+    const aprInput = document.getElementById('apr');
+    const daysInput = document.getElementById('days');
+    const resultDiv = document.getElementById('result');
 
-    const priceElement = document.getElementById('price');
-    const ctx = document.getElementById('btcChart').getContext('2d');
+    let prices = {};
 
-    function initChart() {
-      chart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [{
-            label: 'BTC 가격 (USD)',
-            data: dataPoints,
-            borderColor: 'blue',
-            borderWidth: 2,
-            fill: false
-          }]
-        },
-        options: {
-          responsive: true,
-          animation: false,
-          scales: {
-            x: {
-              title: { display: true, text: '시간' }
-            },
-            y: {
-              title: { display: true, text: '가격 ($)' },
-              beginAtZero: false
-            }
-          }
-        }
-      });
-    }
-
-    async function fetchBTC() {
+    async function fetchPrices() {
       try {
-        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
-        const data = await res.json();
-        const currentPrice = data.bitcoin.usd;
-        const now = new Date().toLocaleTimeString();
-
-        priceElement.textContent = `$${currentPrice.toLocaleString()}`;
-
-        if (previousPrice !== null) {
-          if (currentPrice > previousPrice) {
-            priceElement.style.color = 'green';
-          } else if (currentPrice < previousPrice) {
-            priceElement.style.color = 'red';
-          } else {
-            priceElement.style.color = 'black';
-          }
-        }
-
-        previousPrice = currentPrice;
-
-        labels.push(now);
-        dataPoints.push(currentPrice);
-        if (labels.length > 20) {
-          labels.shift();
-          dataPoints.shift();
-        }
-        chart.update();
+        const res = await axios.get('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,ripple,solana&vs_currencies=usd,krw');
+        prices = res.data;
+        calculate();
       } catch (err) {
-        priceElement.textContent = '가격 불러오기 오류';
-        console.error(err);
+        console.error('가격 불러오기 실패:', err);
       }
     }
 
-    initChart();
-    fetchBTC();
-    setInterval(fetchBTC, 10000);
+    function calculate() {
+      const coin = coinSelect.value;
+      const amount = parseFloat(amountInput.value);
+      const apr = parseFloat(aprInput.value);
+      const days = parseInt(daysInput.value);
+
+      if (!coin || isNaN(amount) || isNaN(apr) || isNaN(days)) return;
+
+      const rewardCoin = amount * (apr / 100) * (days / 365);
+      const usd = rewardCoin * prices[coin].usd;
+      const krw = rewardCoin * prices[coin].krw;
+
+      resultDiv.innerHTML = `
+        <p>보상 코인: ${rewardCoin.toFixed(6)}</p>
+        <p>USD 기준: $${usd.toFixed(2)}</p>
+        <p>KRW 기준: ₩${krw.toLocaleString()}</p>
+      `;
+    }
+
+    // 이벤트 등록
+    coinSelect.addEventListener('change', calculate);
+    amountInput.addEventListener('input', calculate);
+    aprInput.addEventListener('input', calculate);
+    daysInput.addEventListener('input', calculate);
+
+    fetchPrices();
   </script>
 </body>
 </html>
