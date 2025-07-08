@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Crypto Staking Calculator</title>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      max-width: 600px;
+      max-width: 700px;
       margin: 40px auto;
       padding: 20px;
       border: 1px solid #ddd;
@@ -38,6 +39,9 @@
       display: block;
       margin: 15px auto 10px;
       height: 40px;
+    }
+    canvas {
+      margin-top: 30px;
     }
   </style>
 </head>
@@ -69,6 +73,8 @@
     <p>KRW 기준: -</p>
   </div>
 
+  <canvas id="stakingChart" width="600" height="300"></canvas>
+
   <script>
     const coinSelect = document.getElementById('coin');
     const amountInput = document.getElementById('amount');
@@ -76,8 +82,10 @@
     const daysInput = document.getElementById('days');
     const resultDiv = document.getElementById('result');
     const coinIcon = document.getElementById('coinIcon');
+    const ctx = document.getElementById('stakingChart').getContext('2d');
 
     let prices = {};
+    let chart;
 
     async function fetchPrices() {
       try {
@@ -113,9 +121,48 @@
         <p>USD 기준: $${usd.toFixed(2)}</p>
         <p>KRW 기준: ₩${krw.toFixed(2).toLocaleString()}</p>
       `;
+
+      drawChart(amount, apr, days, symbol);
     }
 
-    // 이벤트 등록
+    function drawChart(amount, apr, days, symbol) {
+      const labels = [];
+      const data = [];
+
+      for (let d = 1; d <= days; d++) {
+        const reward = amount * (apr / 100) * (d / 365);
+        labels.push(`${d}일`);
+        data.push(reward);
+      }
+
+      if (chart) chart.destroy();
+
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: `누적 보상 (${symbol})`,
+            data: data,
+            borderColor: 'blue',
+            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+            fill: true,
+            tension: 0.2
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            legend: { position: 'top' },
+            title: { display: true, text: '예치 기간별 누적 보상' }
+          },
+          scales: {
+            y: { beginAtZero: true }
+          }
+        }
+      });
+    }
+
     coinSelect.addEventListener('change', () => {
       updateCoinIcon();
       calculate();
