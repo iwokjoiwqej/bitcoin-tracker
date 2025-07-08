@@ -2,11 +2,33 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>My Bitcoin Tracker</title>
+  <title>Bitcoin Tracker</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin-top: 100px;
+    }
+    #price {
+      font-size: 2rem;
+      color: green;
+    }
+  </style>
 </head>
 <body>
   <h1>🚀 내 비트코인 트래커</h1>
-  <p>비트코인 실시간 가격 정보를 곧 보여줄게요!</p>
+  <p>현재 비트코인 가격 (USD):</p>
+  <div id="price">불러오는 중...</div>
+
+  <script>
+    async function fetchBTC() {
+      const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+      const data = await res.json();
+      document.getElementById('price').innerText = `$${data.bitcoin.usd.toLocaleString()}`;
+    }
+
+    fetchBTC();
+    setInterval(fetchBTC, 10000); // 10초마다 갱신
+  </script>
 </body>
 </html>
